@@ -2,6 +2,7 @@
 client_id.json
 google-servicekey.json
 options.json
+client_secret*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
