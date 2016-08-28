@@ -16,11 +16,27 @@ import oauth2client
 from oauth2client import client
 from oauth2client import tools
 
+import sys
+from collections import OrderedDict
+import csv
+import datetime
+from validate_email import validate_email
+
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/sheets.googleapis.com-python-quickstart.json
 SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly'
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Google Sheets API Python Quickstart'
+SHEET_ID = '1gJZoh5iNFweWaAfdG2QiNvP6tlDUWBymJ6NOoRGKqG8'
+SHEET_RANGE = 'Sheet1!A3:G'
+DELIMITER = ','
+ENCLOSURE = '"'
+
+SHEET_HEADINGS = ["Company", "Website", "Title", "First Name", "Last Name", "Position", "eMail"]
+CSV_HEADINGS = ["Title", "First Name", "Last Name", "Email", "Institution", "Position", "Website", "Tags"]
+FIELD_ORDER = [2, 3, 4, 6, 0, 5, 1]
+
+#counter = 0
 
 try:
     import argparse
@@ -41,8 +57,7 @@ def get_credentials():
     credential_dir = os.path.join(home_dir, '.credentials')
     if not os.path.exists(credential_dir):
         os.makedirs(credential_dir)
-    credential_path = os.path.join(credential_dir,
-                                   'sheets.googleapis.com-python-quickstart.json')
+    credential_path = os.path.join(credential_dir,                                  'sheets.googleapis.com-python-quickstart.json')
 
     store = oauth2client.file.Storage(credential_path)
     credentials = store.get()
@@ -59,74 +74,55 @@ def get_credentials():
 def main():
     """Lists a set of people's details in a comma separated format
     """
-    # get user credentials to access the spreadsheet
-    credentials = get_credentials()
-    http = credentials.authorize(httplib2.Http())
-    discoveryUrl = ('https://sheets.googleapis.com/$discovery/rest?'
-                    'version=v4')
-    service = discovery.build('sheets', 'v4', http=http,
-                              discoveryServiceUrl=discoveryUrl)
-    # set the ID of the spreadsheet
-    spreadsheetId = '1gJZoh5iNFweWaAfdG2QiNvP6tlDUWBymJ6NOoRGKqG8'
-    rangeName = 'Sheet1!A2:G2'
-    result = service.spreadsheets().values().get(
-        spreadsheetId=spreadsheetId, range=rangeName).execute()
-    values = result.get('values', [])
+    # open the file for storing the results - give it a useful Name
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H.%M.%S")
+    path = "csv"
+    filename = "contacts-" + timestamp + ".csv"
+    with open(path + "/" + filename, 'w') as csvfile:
+        # first add the headers
+        contacts = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
 
-    if not values:
-        print('No data found.')
-    else:
-        print('First Column:')
-        for row in values:
-            print(row)
+        # first, write the header row
+        contacts.writerow(CSV_HEADINGS)
 
-    rangeName = "Sheet1!A3:G"
-    result = service.spreadsheets().values().get(
-    spreadsheetId=spreadsheetId, range=rangeName).execute()
-    values = result.get('values', [])
+        # get user credentials to access the spreadsheet
+        credentials = get_credentials()
+        http = credentials.authorize(httplib2.Http())
+        discoveryUrl = ('https://sheets.googleapis.com/$discovery/rest?version=v4')
+        service = discovery.build('sheets', 'v4', http=http, discoveryServiceUrl=discoveryUrl)
+        result = service.spreadsheets().values().get(spreadsheetId=SHEET_ID, range=SHEET_RANGE).execute()
 
-    if not values:
-        print('No data found.')
-    else:
-        print('User Data:')
-        for row in values:
-            print(row)
+        # then print the data
+        rows = result.get('values', [])
+        if not rows:
+            print('No data found.')
+        else:
+            print('User Data:')
+            for row in rows:
+                dodgy = False # flag rows with dodgy data
+                contact = []
+                # ok - quick and dirty
+                for index in FIELD_ORDER:
+                    try:
+                        # email is the 7th field in the spreadsheet
+                        # checking MX: validate_email(row[index].encode("utf-8").strip(), check_mx=True):
+                        if index == 6 and not  validate_email(row[index].encode("utf-8").strip()):
+                            dodgy = True
+                            #row[index].append(" **invalid**")
+                        contact.append(row[index].encode("utf-8").strip())
+                    except:
+                        contact.append("Null")
+                        dodgy = True
+
+                if dodgy:
+                    print('**** Dodgy: {}'.format(contact))
+                else:
+                    print('{} {} {}, {} ({})'.format(contact[0], contact[1], contact[2], contact[4], contact[3]))
+                    contacts.writerow(contact)
+
 
 if __name__ == '__main__':
     main()
-
-# If modifying these scopes, delete your previously saved credentials
-# at ~/.credentials/sheets.googleapis.com-python-quickstart.json
-#SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly'
-#CLIENT_SECRET_FILE = 'client_secret.json'
-#APPLICATION_NAME = 'Google Sheets API Python Quickstart'
-
-
-#import os
-#import sys
-## work with JSON data
-#import json
-#from hashlib import md5
-#import urllib2
-#import BeautifulSoup
-## interact with Google spreadsheets
-#import gspread
-## authenticate to access the Google api
-#from oauth2client.service_account import ServiceAccountCredentials
-
-#DOC_ID = "1gJZoh5iNFweWaAfdG2QiNvP6tlDUWBymJ6NOoRGKqG8"
-#GOOGLE_API_KEY = "google-servicekey.json"
-#SCOPE = []'https://spreadsheets.good.com/feeds']
-
-#credentials = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_API_KEY, SCOPE)
-
-#gs = gspread.authorize(credentials)
-
-#sheet = gs.open_by_key(DOC_ID).sheet1
-
-#all_content = sheet.get_all_values()
-
-#print(all_content)
 
 # import the spread sheet and print it as a series of rows
 # in the form:
