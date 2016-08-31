@@ -4,6 +4,7 @@ A script to transform an ad hoc spreadsheet configuration into a CSV suitable fo
 This Python script reads data directly from a Google Spreadsheet, reorganises it, and formats it as double-quote enclosed comma separated values suitable for import into a Mautic contact database.
 
 __Getting Google Spreadsheet access credentials__
+
 You must have a Google Dev account.
 
 Used this howto: https://developers.google.com/sheets/quickstart/python
